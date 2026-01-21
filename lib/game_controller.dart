@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'dart:async';
 import 'card_model.dart';
 
 class GameController extends GetxController {
@@ -59,79 +60,56 @@ class GameController extends GetxController {
     }
     newDeck.shuffle();
 
-    // Deal Player
     playerHidden.value = newDeck.sublist(0, 3);
     playerFaceUp.value = newDeck.sublist(3, 6);
-    playerHand.value = sortCards(newDeck.sublist(6, 9));
+    playerHand.value = _sortList(newDeck.sublist(6, 9));
 
-    // Deal AI
     aiHidden.value = newDeck.sublist(9, 12);
     aiFaceUp.value = newDeck.sublist(12, 15);
-    aiHand.value = sortCards(newDeck.sublist(15, 18));
+    aiHand.value = _sortList(newDeck.sublist(15, 18));
 
     deck.value = newDeck.sublist(18);
     pile.clear();
-
     selectedIndices.clear();
+
     isSwapPhase.value = true;
     isPlayerTurn.value = true;
     hasWon.value = "";
     gameMessage.value = "Swap Phase: Prepare your table";
-
     _aiTurnScheduled = false;
   }
 
-  List<CardModel> sortCards(List<CardModel> cards) {
-    final copy = List<CardModel>.from(cards);
-    copy.sort((a, b) => a.rank.compareTo(b.rank));
-    return copy;
+  List<CardModel> _sortList(List<CardModel> cards) {
+    return cards..sort((a, b) => a.rank.compareTo(b.rank));
   }
 
   void _checkWin() {
     if (hasWon.isNotEmpty) return;
-
     if (playerHidden.isEmpty && playerFaceUp.isEmpty && playerHand.isEmpty) {
       hasWon.value = "Player";
       gameMessage.value = "You win!";
-      return;
-    }
-
-    if (aiHidden.isEmpty && aiFaceUp.isEmpty && aiHand.isEmpty) {
+    } else if (aiHidden.isEmpty && aiFaceUp.isEmpty && aiHand.isEmpty) {
       hasWon.value = "AI";
       gameMessage.value = "AI wins!";
-      return;
     }
   }
 
   // --- Selection / Swap Phase ---
 
   void toggleSelection(int index) {
-    // During normal play, only allow player interaction on player's turn
     if (!isSwapPhase.value && !isPlayerTurn.value) return;
 
     if (isSwapPhase.value) {
-      // Only one card selected during swap
-      selectedIndices.value = selectedIndices.contains(index) ? <int>[] : <int>[index];
+      selectedIndices.value = selectedIndices.contains(index) ? [] : [index];
       return;
     }
 
-    // Normal play: allow selecting multiple of same rank/label
     if (selectedIndices.contains(index)) {
       selectedIndices.remove(index);
-      return;
-    }
-
-    if (selectedIndices.isEmpty) {
-      selectedIndices.add(index);
-      return;
-    }
-
-    final first = playerHand[selectedIndices[0]];
-    final next = playerHand[index];
-    if (first.label == next.label) {
+    } else if (selectedIndices.isEmpty || playerHand[selectedIndices[0]].label == playerHand[index].label) {
       selectedIndices.add(index);
     } else {
-      selectedIndices.value = <int>[index];
+      selectedIndices.value = [index];
     }
   }
 
@@ -139,20 +117,17 @@ class GameController extends GetxController {
     if (isSwapPhase.value && selectedIndices.length == 1) {
       final handIdx = selectedIndices[0];
 
-      // Swap Hand <-> FaceUp
       final temp = playerHand[handIdx];
       playerHand[handIdx] = playerFaceUp[index];
       playerFaceUp[index] = temp;
 
-      // Sort ONCE and replace list
-      playerHand.value = sortCards(playerHand.toList());
-
-      // Clear selection
+      playerHand.sort((a, b) => a.rank.compareTo(b.rank));
+      playerHand.refresh();
+      playerFaceUp.refresh();
       selectedIndices.clear();
       return;
     }
 
-    // Normal play: if hand empty, can play face-up
     if (!isSwapPhase.value && isPlayerTurn.value && playerHand.isEmpty) {
       processMove([playerFaceUp[index]], "playerFaceUp", index);
     }
@@ -162,230 +137,194 @@ class GameController extends GetxController {
 
   bool isValidMove(CardModel card) {
     if (pile.isEmpty) return true;
-
     final topCard = pile.last;
-
-    // Always valid specials
     if (card.isReset || card.isBurn) return true;
-
-    // Your custom rule (keep if intended)
     if (topCard.rank == 5) return card.rank <= 5;
-
     return card.rank >= topCard.rank;
   }
 
   // --- Core Move Processing ---
 
   void processMove(List<CardModel> cards, String source, dynamic indexInfo) {
-    if (cards.isEmpty) return;
-    if (hasWon.isNotEmpty) return;
+    if (cards.isEmpty || hasWon.isNotEmpty) return;
 
     final actorIsAi = source.startsWith("ai");
     final canPlay = isValidMove(cards[0]);
 
     if (!canPlay) {
-      // Invalid move: remove attempted cards from source, then pick up pile + attempted cards
-      _removeCardsFromSource(source, cards, indexInfo);
+      // REFINED: Blind Play Fail (Hidden cards)
+      if (source == "playerHidden") {
+        final failedCard = cards[0];
+        final pickUp = <CardModel>[...pile, failedCard];
+        pile.clear();
+        playerHidden.removeAt(indexInfo);
 
-      final pickUp = <CardModel>[...pile, ...cards];
-      pile.clear();
+        playerHand.addAll(pickUp);
+        playerHand.sort((a, b) => a.rank.compareTo(b.rank));
+        playerHand.refresh();
 
-      if (actorIsAi) {
-        aiHand.value = sortCards([...aiHand, ...pickUp]);
-      } else {
-        playerHand.value = sortCards([...playerHand, ...pickUp]);
+        gameMessage.value = "Blind Play Failed! You picked up the pile.";
+        isPlayerTurn.value = false;
+        _scheduleAiTurn();
+        return;
       }
 
-      gameMessage.value = "Invalid move! ${actorIsAi ? "AI" : "You"} picked up the pile.";
-      selectedIndices.clear();
+      if (!actorIsAi) {
+        gameMessage.value = "Invalid move. Choose a valid card or pick up.";
+        return;
+      }
 
-      // Turn passes to opponent
-      isPlayerTurn.value = actorIsAi;
-      if (!isPlayerTurn.value) _scheduleAiTurn();
-
-      _checkWin();
+      // AI Failure Logic
+      _removeCardsFromSource(source, cards, indexInfo);
+      aiHand.addAll([...pile, ...cards]);
+      aiHand.sort((a, b) => a.rank.compareTo(b.rank));
+      aiHand.refresh();
+      pile.clear();
+      gameMessage.value = "AI couldn't play and picked up the pile.";
+      isPlayerTurn.value = true;
       return;
     }
 
-    // Valid play: add cards to pile
+    // Valid play logic
     pile.addAll(cards);
-
-    // Burn: 10 or 4-of-a-kind on top
     final isBurn =
         cards[0].isBurn || (pile.length >= 4 && pile.sublist(pile.length - 4).every((c) => c.label == pile.last.label));
 
-    // Remove from source + draw up to 3 (hand sources)
     _removeCardsFromSource(source, cards, indexInfo);
 
     if (isBurn) {
       pile.clear();
       gameMessage.value = actorIsAi ? "AI BURNED IT! AI goes again." : "BURNED! Go again.";
-
-      // Same player keeps turn
       isPlayerTurn.value = !actorIsAi;
-
-      selectedIndices.clear();
-      _checkWin();
-
       if (actorIsAi) _scheduleAiTurn();
-      return;
+    } else {
+      gameMessage.value = "${actorIsAi ? "AI" : "You"} played ${cards[0].label}";
+      isPlayerTurn.value = actorIsAi; // Flip turn
+      if (!isPlayerTurn.value) _scheduleAiTurn();
     }
 
-    gameMessage.value = "${actorIsAi ? "AI" : "You"} played ${cards[0].label}";
-
-    // Normal turn flip
-    isPlayerTurn.value = actorIsAi; // if AI played -> player turn true; if player played -> false
     selectedIndices.clear();
-
     _checkWin();
-    if (!isPlayerTurn.value && hasWon.isEmpty) _scheduleAiTurn();
   }
 
   void _removeCardsFromSource(String source, List<CardModel> cards, dynamic indexInfo) {
     switch (source) {
       case "playerHand":
-        // Remove by indices (safer than removeWhere)
-        final indices = (indexInfo as List<int>?) ?? <int>[];
-        final sorted = [...indices]..sort((a, b) => b.compareTo(a));
-        for (final i in sorted) {
-          if (i >= 0 && i < playerHand.length) {
-            playerHand.removeAt(i);
-          }
+        final indices = List<int>.from(indexInfo)..sort((a, b) => b.compareTo(a));
+        for (var i in indices) {
+          playerHand.removeAt(i);
         }
-
-        // Draw up to 3 from deck
         while (playerHand.length < 3 && deck.isNotEmpty) {
           playerHand.add(deck.removeAt(0));
         }
-        playerHand.value = sortCards(playerHand.toList());
+        playerHand.sort((a, b) => a.rank.compareTo(b.rank));
+        playerHand.refresh();
         break;
-
       case "playerFaceUp":
-        if (indexInfo is int && indexInfo >= 0 && indexInfo < playerFaceUp.length) {
-          playerFaceUp.removeAt(indexInfo);
-        }
+        playerFaceUp.removeAt(indexInfo);
         break;
-
       case "playerHidden":
-        if (indexInfo is int && indexInfo >= 0 && indexInfo < playerHidden.length) {
-          playerHidden.removeAt(indexInfo);
-        }
+        playerHidden.removeAt(indexInfo);
         break;
-
       case "aiHand":
-        // Remove the exact cards played
-        for (final c in cards) {
+        for (var c in cards) {
           aiHand.remove(c);
         }
-
-        // Draw up to 3 from deck
         while (aiHand.length < 3 && deck.isNotEmpty) {
           aiHand.add(deck.removeAt(0));
         }
-        aiHand.value = sortCards(aiHand.toList());
+        aiHand.sort((a, b) => a.rank.compareTo(b.rank));
+        aiHand.refresh();
         break;
-
       case "aiFaceUp":
-        if (indexInfo is int && indexInfo >= 0 && indexInfo < aiFaceUp.length) {
-          aiFaceUp.removeAt(indexInfo);
-        }
+        aiFaceUp.removeAt(indexInfo);
         break;
-
       case "aiHidden":
-        if (indexInfo is int && indexInfo >= 0 && indexInfo < aiHidden.length) {
-          aiHidden.removeAt(indexInfo);
-        }
+        aiHidden.removeAt(indexInfo);
         break;
     }
-
-    _checkWin();
   }
 
-  // --- AI Turn Scheduling / AI Logic ---
+  // --- AI Turn Logic ---
 
   void _scheduleAiTurn() {
-    if (_aiTurnScheduled) return;
+    if (_aiTurnScheduled || hasWon.isNotEmpty) return;
     _aiTurnScheduled = true;
-
-    Future.delayed(const Duration(milliseconds: 800), () {
+    Future.delayed(const Duration(milliseconds: 1200), () {
       _aiTurnScheduled = false;
       executeAiTurn();
     });
   }
 
   void executeAiTurn() {
-    if (hasWon.isNotEmpty) return;
-    if (isPlayerTurn.value) return;
-    if (isSwapPhase.value) return; // AI doesn't act during swap phase
+    if (hasWon.isNotEmpty || isPlayerTurn.value || isSwapPhase.value) return;
 
-    // 1) Try Hand
+    // 1) Hand
     final playable = aiHand.where(isValidMove).toList();
     if (playable.isNotEmpty) {
       playable.sort((a, b) => a.rank.compareTo(b.rank));
-      final best = playable.first;
-
-      // Play all of same label (multi-card)
-      final cardsToPlay = aiHand.where((c) => c.label == best.label).toList();
+      final cardsToPlay = aiHand.where((c) => c.label == playable.first.label).toList();
       processMove(cardsToPlay, "aiHand", null);
       return;
     }
 
-    // 2) Try FaceUp (only when hand empty)
+    // 2) FaceUp
     if (aiHand.isEmpty && aiFaceUp.isNotEmpty) {
       final playableFaceUp = aiFaceUp.where(isValidMove).toList();
       if (playableFaceUp.isNotEmpty) {
-        final chosen = playableFaceUp.first;
-        final idx = aiFaceUp.indexOf(chosen);
+        final idx = aiFaceUp.indexOf(playableFaceUp.first);
         processMove([aiFaceUp[idx]], "aiFaceUp", idx);
         return;
       }
     }
 
-    // 3) Try Hidden (only when hand and face-up empty)
+    // 3) Hidden
     if (aiHand.isEmpty && aiFaceUp.isEmpty && aiHidden.isNotEmpty) {
-      // In classic Shithead, this is blind. Keep as first card.
       processMove([aiHidden[0]], "aiHidden", 0);
       return;
     }
 
-    // 4) Must pick up pile (ONLY AI picks up)
+    // 4) Pickup
     if (pile.isNotEmpty) {
-      aiHand.value = sortCards([...aiHand, ...pile]);
+      aiHand.addAll(pile);
+      aiHand.sort((a, b) => a.rank.compareTo(b.rank));
+      aiHand.refresh();
       pile.clear();
       gameMessage.value = "AI picked up the pile!";
     }
-
     isPlayerTurn.value = true;
   }
 
   // --- Player Actions ---
 
   void playerPickUp() {
-    if (pile.isEmpty) return;
-    if (hasWon.isNotEmpty) return;
+    // GUARD: Prevent pickup if not player's turn or game over
+    if (!isPlayerTurn.value || pile.isEmpty || hasWon.isNotEmpty || isSwapPhase.value) return;
 
-    playerHand.value = sortCards([...playerHand, ...pile]);
+    playerHand.addAll(pile);
+    playerHand.sort((a, b) => a.rank.compareTo(b.rank));
+    playerHand.refresh();
     pile.clear();
 
     gameMessage.value = "You picked up the pile.";
     selectedIndices.clear();
-
     isPlayerTurn.value = false;
     _scheduleAiTurn();
-
-    _checkWin();
   }
 
   void handleHiddenClick(int index) {
-    if (isSwapPhase.value) return;
-    if (!isPlayerTurn.value) return;
+    // Guard: Only allow hidden plays if it's your turn and not swapping
+    if (isSwapPhase.value || !isPlayerTurn.value || hasWon.isNotEmpty) return;
 
-    // Only allow hidden plays when hand and face-up are empty
-    if (playerHand.isNotEmpty) return;
-    if (playerFaceUp.isNotEmpty) return;
+    // Guard: Standard rules say you can't play hidden cards until hand and face-up are gone
+    if (playerHand.isNotEmpty || playerFaceUp.isNotEmpty) {
+      gameMessage.value = "Finish your hand and face-up cards first!";
+      return;
+    }
 
     if (index < 0 || index >= playerHidden.length) return;
 
+    // Trigger the move processing we refined earlier
     processMove([playerHidden[index]], "playerHidden", index);
   }
 }
