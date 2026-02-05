@@ -125,7 +125,7 @@ class ShitheadGame extends StatelessWidget {
               ),
 
               // Add a little breathing room ABOVE the bottom nav bar (not required, just nice)
-              const SizedBox(height: 12),
+              const Text("V 0.0.1"),
             ],
           ),
         ),
@@ -181,7 +181,7 @@ class ShitheadGame extends StatelessWidget {
             _buildActionButton(
               "PLAY",
               Colors.blue,
-              onPressed: controller.selectedIndices.isEmpty
+              onPressed: controller.selectedIndices.isEmpty || controller.isSwapPhase.value
                   ? null
                   : () {
                       final indices = controller.selectedIndices.toList();
@@ -200,7 +200,7 @@ class ShitheadGame extends StatelessWidget {
             _buildActionButton(
               "PICK UP",
               Colors.orange,
-              onPressed: controller.pile.isEmpty ? null : controller.playerPickUp,
+              onPressed: controller.pile.isEmpty || controller.hasWon.value.isNotEmpty ? null : controller.playerPickUp,
             ),
           ],
         ),
