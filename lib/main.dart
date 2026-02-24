@@ -125,7 +125,7 @@ class ShitheadGame extends StatelessWidget {
               ),
 
               // Add a little breathing room ABOVE the bottom nav bar (not required, just nice)
-              const Text("V 0.0.1"),
+              const Text("V 0.0.2"),
             ],
           ),
         ),
