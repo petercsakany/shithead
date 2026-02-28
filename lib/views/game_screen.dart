@@ -94,152 +94,123 @@ class _GameScreenContent extends StatelessWidget {
             return LayoutBuilder(
               builder: (context, constraints) {
                 double scale = 1.0;
-                if (constraints.maxHeight < 600) {
-                  scale = constraints.maxHeight / 600;
+                // Base scale primarily on width for portrait prioritize, with a generous max width bound
+                if (constraints.maxWidth < 600) {
+                  scale = constraints.maxWidth / 600;
                 }
-                if (scale < 0.5) scale = 0.5;
+                if (scale < 0.6) scale = 0.6; // Don't shrink too much
 
-                return Stack(
+                // (iconScale removed to fix unused variable warning)
+
+                Widget content = Column(
                   children: [
-                    // GAME BOARD
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Top AI
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: _buildPlayerZoneDecorated(context, aiTop, controller, isVertical: true, scale: scale),
-                        ),
-                        // Middle Area
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Left AI
-                              Flexible(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 8.0),
-                                  child: RotatedBox(
-                                    quarterTurns: 1,
-                                    child: _buildPlayerZoneDecorated(
-                                      context,
-                                      aiLeft,
-                                      controller,
-                                      isVertical: false,
-                                      scale: scale,
-                                    ),
-                                  ),
+                    // 1. Message area (Top)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (state.latestMessage != null)
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.black87,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFFf4c025)),
+                                ),
+                                child: Text(
+                                  state.latestMessage!,
+                                  style: const TextStyle(color: Color(0xFFf4c025), fontWeight: FontWeight.bold),
                                 ),
                               ),
-                              // Center Play Area
-                              _buildCenterArea(state, scale),
-                              // Right AI
-                              Flexible(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(right: 8.0),
-                                  child: RotatedBox(
-                                    quarterTurns: -1,
-                                    child: _buildPlayerZoneDecorated(
-                                      context,
-                                      aiRight,
-                                      controller,
-                                      isVertical: false,
-                                      scale: scale,
-                                    ),
-                                  ),
-                                ),
+                            )
+                          else
+                            const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.history, color: Color(0xFFf4c025)),
+                            onPressed: () => _showHistoryDialog(context, state.messageHistory),
+                            tooltip: 'View History',
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // 2. Top AI Player
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: _buildPlayerZoneDecorated(context, aiTop, controller, isVertical: true, scale: scale),
+                    ),
+
+                    // 3. Middle AI Players (Left & Right side by side)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildPlayerZoneDecorated(context, aiLeft, controller, isVertical: true, scale: scale),
+                          _buildPlayerZoneDecorated(context, aiRight, controller, isVertical: true, scale: scale),
+                        ],
+                      ),
+                    ),
+
+                    // 4. Center Play Area (Deck and Discard Pile)
+                    Expanded(child: Center(child: _buildCenterArea(state, scale))),
+
+                    // 5. Bottom User and Actions
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Left Action Buttons (New Game / Pick Up)
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.refresh),
+                                color: const Color(0xFFf4c025),
+                                onPressed: () => controller.startNewGame(),
+                                tooltip: 'New Game',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.download),
+                                color: const Color(0xFFf4c025),
+                                onPressed: () => controller.pickUpPile(user),
+                                tooltip: 'Pick Up Pile',
                               ),
                             ],
                           ),
-                        ),
-                        // Bottom User
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: _buildPlayerZoneDecorated(context, user, controller, isVertical: true, scale: scale),
-                        ),
-                      ],
-                    ),
-
-                    // Message overlay top-left
-                    Align(
-                      alignment: Alignment.topLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (state.latestMessage != null)
-                              Flexible(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black87,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: const Color(0xFFf4c025)),
-                                  ),
-                                  child: Text(
-                                    state.latestMessage!,
-                                    style: const TextStyle(color: Color(0xFFf4c025), fontWeight: FontWeight.bold),
-                                  ),
-                                ),
+                          // User Zone
+                          Expanded(
+                            child: _buildPlayerZoneDecorated(context, user, controller, isVertical: true, scale: scale),
+                          ),
+                          // Right Action Buttons (Play Selected)
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.play_arrow),
+                                color: (state.selectedCards.isNotEmpty && state.currentPlayer.id == user.id)
+                                    ? Colors.green
+                                    : Colors.grey,
+                                onPressed: (state.selectedCards.isNotEmpty && state.currentPlayer.id == user.id)
+                                    ? () => controller.playSelectedCards(user)
+                                    : null,
+                                tooltip: 'Play Selected',
                               ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.history, color: Color(0xFFf4c025)),
-                              onPressed: () => _showHistoryDialog(context, state.messageHistory),
-                              tooltip: 'View History',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Action Buttons at bottom right
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: 120.0 * scale, right: 16.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (state.selectedCards.isNotEmpty && state.currentPlayer.id == user.id) ...[
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                ),
-                                onPressed: () => controller.playSelectedCards(user),
-                                child: const Text('PLAY SELECTED', style: TextStyle(fontWeight: FontWeight.bold)),
-                              ),
-                              const SizedBox(height: 10),
                             ],
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFf4c025),
-                                foregroundColor: Colors.black,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              ),
-                              onPressed: () => controller.pickUpPile(user),
-                              child: const Text('PICK UP PILE', style: TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                            const SizedBox(height: 10),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                foregroundColor: const Color(0xFFf4c025),
-                                side: const BorderSide(color: Color(0xFFf4c025)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              ),
-                              onPressed: () => controller.startNewGame(),
-                              child: const Text('NEW GAME'),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                    // Game Over Overlay
+                  ],
+                );
+
+                return Stack(
+                  children: [
+                    content,
                     if (controller.isGameOver)
                       Container(
                         color: Colors.black87,
@@ -278,7 +249,7 @@ class _GameScreenContent extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Draw Pile
+        // Deck
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -300,15 +271,26 @@ class _GameScreenContent extends StatelessWidget {
                   Positioned(
                     left: 2 * scale,
                     top: 2 * scale,
-                    child: CardWidget(card: null, isFaceUp: false, width: 60 * scale, height: 90 * scale),
+                    child: CardWidget(card: null, isFaceUp: false, width: 75 * scale, height: 110 * scale),
                   ),
                 if (state.deck.remaining > 1)
                   Positioned(
                     left: 1 * scale,
                     top: 1 * scale,
-                    child: CardWidget(card: null, isFaceUp: false, width: 60 * scale, height: 90 * scale),
+                    child: CardWidget(card: null, isFaceUp: false, width: 75 * scale, height: 110 * scale),
                   ),
-                CardWidget(card: null, isFaceUp: false, width: 60 * scale, height: 90 * scale),
+                if (state.deck.remaining > 0)
+                  CardWidget(card: null, isFaceUp: false, width: 75 * scale, height: 110 * scale)
+                else
+                  Container(
+                    width: 75 * scale,
+                    height: 110 * scale,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.white24, style: BorderStyle.solid),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.white10,
+                    ),
+                  ),
               ],
             ),
             SizedBox(height: 4 * scale),
@@ -324,7 +306,7 @@ class _GameScreenContent extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'PILE',
+              'DISCARD PILE',
               style: TextStyle(
                 color: const Color(0xFFf4c025),
                 letterSpacing: 2,
@@ -334,11 +316,11 @@ class _GameScreenContent extends StatelessWidget {
             ),
             SizedBox(height: 8 * scale),
             if (state.topCard != null)
-              CardWidget(card: state.topCard, isFaceUp: true, width: 60 * scale, height: 90 * scale)
+              CardWidget(card: state.topCard, isFaceUp: true, width: 75 * scale, height: 110 * scale)
             else
               Container(
-                width: 60 * scale,
-                height: 90 * scale,
+                width: 75 * scale,
+                height: 110 * scale,
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.white24, style: BorderStyle.solid),
                   borderRadius: BorderRadius.circular(8),
@@ -360,7 +342,7 @@ class _GameScreenContent extends StatelessWidget {
     Player player,
     GameController controller, {
     required bool isVertical,
-    double scale = 1.0,
+    double scale = 1,
   }) {
     bool isActive = player.id == controller.state.currentPlayer.id;
     return Container(

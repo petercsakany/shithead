@@ -59,14 +59,14 @@ class PlayerZone extends StatelessWidget {
                       child: CardWidget(
                         card: faceDownCard,
                         isFaceUp: false,
-                        width: 45 * scale,
-                        height: 70 * scale,
+                        width: 55 * scale,
+                        height: 85 * scale,
                         isPlayable: canPlayFaceDown,
                         isSelected: isCardSelected?.call(faceDownCard) ?? false,
                       ),
                     )
                   else
-                    SizedBox(width: 45 * scale, height: 70 * scale),
+                    SizedBox(width: 55 * scale, height: 85 * scale),
 
                   // Face up card on top
                   if (faceUpCard != null)
@@ -75,8 +75,8 @@ class PlayerZone extends StatelessWidget {
                       child: CardWidget(
                         card: faceUpCard,
                         isFaceUp: true,
-                        width: 45 * scale,
-                        height: 70 * scale,
+                        width: 55 * scale,
+                        height: 85 * scale,
                         isPlayable: canPlayFaceUp,
                         isSelected: isCardSelected?.call(faceUpCard) ?? false,
                       ),
@@ -103,8 +103,8 @@ class PlayerZone extends StatelessWidget {
                       isFaceUp: true,
                       isPlayable: true,
                       isSelected: isCardSelected?.call(c) ?? false,
-                      width: 60 * scale,
-                      height: 90 * scale,
+                      width: 75 * scale,
+                      height: 110 * scale,
                     ),
                   ),
                 );
@@ -112,22 +112,7 @@ class PlayerZone extends StatelessWidget {
             ),
           )
         else
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: player.hand.take(5).map((_) {
-              // Show up to 5 card backs for AI
-              return Padding(
-                padding: EdgeInsets.symmetric(horizontal: 2.0 * scale),
-                child: CardWidget(
-                  card: null,
-                  isFaceUp: false,
-                  width: 30 * scale,
-                  height: 45 * scale,
-                  isPlayable: false,
-                ),
-              );
-            }).toList(),
-          ),
+          SizedBox(height: 45 * scale), // Maintain some spacing where hand would be
       ],
     );
   }
