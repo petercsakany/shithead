@@ -51,7 +51,7 @@ class _GameScreenContent extends StatelessWidget {
                           child: Text('No moves yet', style: TextStyle(color: Colors.white54)),
                         )
                       : ListView.builder(
-                          reverse: true,
+                          reverse: false,
                           itemCount: history.length,
                           itemBuilder: (context, index) {
                             return Padding(
