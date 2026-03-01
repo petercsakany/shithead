@@ -27,7 +27,12 @@ class GameController extends ChangeNotifier {
       Player(id: 'ai3', name: 'AI Right'),
     ];
 
-    state = GameState(deck: deck, players: players, discardPile: [], selectedCards: []);
+    state = GameState(
+      deck: deck,
+      players: players,
+      discardPile: [],
+      selectedCards: [],
+    );
 
     _dealCards();
     state.currentPhase = GamePhase.swap;
@@ -124,7 +129,8 @@ class GameController extends ChangeNotifier {
   }
 
   void performSwap(Player p) {
-    if (state.currentPhase != GamePhase.swap || p.id != state.currentPlayer.id) {
+    if (state.currentPhase != GamePhase.swap ||
+        p.id != state.currentPlayer.id) {
       return;
     }
     if (swapHandCard == null || swapFaceUpCard == null) return;
@@ -148,14 +154,17 @@ class GameController extends ChangeNotifier {
   }
 
   void finishSwapping(Player p) {
-    if (state.currentPhase != GamePhase.swap || p.id != state.currentPlayer.id) {
+    if (state.currentPhase != GamePhase.swap ||
+        p.id != state.currentPlayer.id) {
       return;
     }
 
     swapHandCard = null;
     swapFaceUpCard = null;
     state.currentPhase = GamePhase.playing;
-    state.messageHistory.add('Game started! ${state.currentPlayer.name}\'s turn.');
+    state.messageHistory.add(
+      'Game started! ${state.currentPlayer.name}\'s turn.',
+    );
     notifyListeners();
     _checkAITurn();
   }
@@ -231,7 +240,8 @@ class GameController extends ChangeNotifier {
     _checkWinCondition();
     if (isGameOver) return;
 
-    state.currentPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
+    state.currentPlayerIndex =
+        (state.currentPlayerIndex + 1) % state.players.length;
     notifyListeners();
     _checkAITurn();
   }
@@ -254,7 +264,9 @@ class GameController extends ChangeNotifier {
     final p = state.currentPlayer;
     if (!p.isAI) return;
 
-    await Future.delayed(const Duration(milliseconds: 1200)); // Simulate thinking
+    await Future.delayed(
+      const Duration(milliseconds: 1200),
+    ); // Simulate thinking
 
     // Find playable cards
     List<PlayingCard> validPlay = [];

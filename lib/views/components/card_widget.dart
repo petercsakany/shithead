@@ -125,7 +125,7 @@ class CardWidget extends StatelessWidget {
                   if (!isPlayable)
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
+                        color: Colors.black.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
