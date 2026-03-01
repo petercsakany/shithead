@@ -66,10 +66,18 @@ class CardWidget extends StatelessWidget {
         decoration: BoxDecoration(
           color: isFaceUp ? Colors.white : Colors.blue.shade900,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isSelected ? Colors.green : Colors.black26, width: isSelected || !isFaceUp ? 2 : 1),
+          border: Border.all(
+            color: isSelected ? Colors.green : Colors.black26,
+            width: isSelected || !isFaceUp ? 2 : 1,
+          ),
           boxShadow: [
             if (isSelected || !isFaceUp)
-              const BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1, offset: Offset(0, 2)),
+              const BoxShadow(
+                color: Colors.black26,
+                blurRadius: 4,
+                spreadRadius: 1,
+                offset: Offset(0, 2),
+              ),
           ],
         ),
         child: isFaceUp
@@ -92,7 +100,10 @@ class CardWidget extends StatelessWidget {
                   Center(
                     child: Text(
                       _getSuitSymbol(card!.suit),
-                      style: TextStyle(color: _getSuitColor(card!.suit), fontSize: height * 0.4),
+                      style: TextStyle(
+                        color: _getSuitColor(card!.suit),
+                        fontSize: height * 0.4,
+                      ),
                     ),
                   ),
                   // Bottom right text
@@ -135,7 +146,10 @@ class CardWidget extends StatelessWidget {
                       height: double.infinity,
                       margin: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.blue.shade300, width: 1),
+                        border: Border.all(
+                          color: Colors.blue.shade300,
+                          width: 1,
+                        ),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),

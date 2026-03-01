@@ -15,7 +15,12 @@ class GameState {
 
   final List<String> messageHistory = [];
 
-  GameState({required this.deck, required this.players, this.discardPile = const [], this.selectedCards = const []});
+  GameState({
+    required this.deck,
+    required this.players,
+    this.discardPile = const [],
+    this.selectedCards = const [],
+  });
 
   Player get currentPlayer => players[currentPlayerIndex];
 

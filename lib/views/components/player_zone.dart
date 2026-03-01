@@ -6,6 +6,7 @@ import 'card_widget.dart';
 class PlayerZone extends StatelessWidget {
   final Player player;
   final bool isUser;
+  final bool isSwapping;
   final void Function(PlayingCard card)? onPlayCard;
   final bool Function(PlayingCard card)? isCardSelected;
   final double scale;
@@ -14,6 +15,7 @@ class PlayerZone extends StatelessWidget {
     super.key,
     required this.player,
     this.isUser = false,
+    this.isSwapping = false,
     this.onPlayCard,
     this.isCardSelected,
     this.scale = 1.0,
@@ -41,11 +43,23 @@ class PlayerZone extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(3, (index) {
-            PlayingCard? faceUpCard = index < player.faceUpCards.length ? player.faceUpCards[index] : null;
-            PlayingCard? faceDownCard = index < player.faceDownCards.length ? player.faceDownCards[index] : null;
+            PlayingCard? faceUpCard = index < player.faceUpCards.length
+                ? player.faceUpCards[index]
+                : null;
+            PlayingCard? faceDownCard = index < player.faceDownCards.length
+                ? player.faceDownCards[index]
+                : null;
 
-            bool canPlayFaceUp = isUser && player.canPlayFromFaceUp() && faceUpCard != null;
-            bool canPlayFaceDown = isUser && player.canPlayFromFaceDown() && faceDownCard != null && faceUpCard == null;
+            bool canPlayFaceUp =
+                isUser &&
+                (isSwapping || player.canPlayFromFaceUp()) &&
+                faceUpCard != null;
+            bool canPlayFaceDown =
+                isUser &&
+                !isSwapping &&
+                player.canPlayFromFaceDown() &&
+                faceDownCard != null &&
+                faceUpCard == null;
 
             return Padding(
               padding: EdgeInsets.symmetric(horizontal: 4.0 * scale),
@@ -55,7 +69,9 @@ class PlayerZone extends StatelessWidget {
                   // Face down undercard
                   if (faceDownCard != null)
                     GestureDetector(
-                      onTap: canPlayFaceDown ? () => onPlayCard?.call(faceDownCard) : null,
+                      onTap: canPlayFaceDown
+                          ? () => onPlayCard?.call(faceDownCard)
+                          : null,
                       child: CardWidget(
                         card: faceDownCard,
                         isFaceUp: false,
@@ -71,7 +87,9 @@ class PlayerZone extends StatelessWidget {
                   // Face up card on top
                   if (faceUpCard != null)
                     GestureDetector(
-                      onTap: canPlayFaceUp ? () => onPlayCard?.call(faceUpCard) : null,
+                      onTap: canPlayFaceUp
+                          ? () => onPlayCard?.call(faceUpCard)
+                          : null,
                       child: CardWidget(
                         card: faceUpCard,
                         isFaceUp: true,
@@ -101,7 +119,8 @@ class PlayerZone extends StatelessWidget {
                     child: CardWidget(
                       card: c,
                       isFaceUp: true,
-                      isPlayable: true,
+                      isPlayable:
+                          true, // During swap, they can click any card in hand
                       isSelected: isCardSelected?.call(c) ?? false,
                       width: 75 * scale,
                       height: 110 * scale,

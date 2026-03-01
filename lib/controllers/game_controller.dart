@@ -7,6 +7,11 @@ import '../models/game_state.dart';
 class GameController extends ChangeNotifier {
   late GameState state;
   bool isGameOver = false;
+  String? winner = '';
+
+  // Swapping phase state
+  PlayingCard? swapHandCard;
+  PlayingCard? swapFaceUpCard;
 
   GameController() {
     startNewGame();
@@ -25,8 +30,9 @@ class GameController extends ChangeNotifier {
     state = GameState(deck: deck, players: players, discardPile: [], selectedCards: []);
 
     _dealCards();
-    state.currentPhase = GamePhase.playing;
-    _checkAITurn();
+    state.currentPhase = GamePhase.swap;
+    state.messageHistory.add('Swap cards or tap READY to start!');
+    // Don't check AI turn yet since we wait for user to finish swapping
     notifyListeners();
   }
 
@@ -80,6 +86,24 @@ class GameController extends ChangeNotifier {
   void toggleCardSelection(Player p, PlayingCard card) {
     if (p.id != state.currentPlayer.id) return;
 
+    if (state.currentPhase == GamePhase.swap) {
+      if (p.hand.contains(card)) {
+        if (swapHandCard == card) {
+          swapHandCard = null;
+        } else {
+          swapHandCard = card;
+        }
+      } else if (p.faceUpCards.contains(card)) {
+        if (swapFaceUpCard == card) {
+          swapFaceUpCard = null;
+        } else {
+          swapFaceUpCard = card;
+        }
+      }
+      notifyListeners();
+      return;
+    }
+
     if (state.selectedCards.contains(card)) {
       state.selectedCards.remove(card);
       notifyListeners();
@@ -97,6 +121,43 @@ class GameController extends ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  void performSwap(Player p) {
+    if (state.currentPhase != GamePhase.swap || p.id != state.currentPlayer.id) {
+      return;
+    }
+    if (swapHandCard == null || swapFaceUpCard == null) return;
+
+    // Remove from old lists
+    p.hand.remove(swapHandCard);
+    p.faceUpCards.remove(swapFaceUpCard);
+
+    // Add to new lists
+    p.hand.add(swapFaceUpCard!);
+    p.faceUpCards.add(swapHandCard!);
+
+    // Sort hand again
+    p.sortHand();
+
+    // Clear selection
+    swapHandCard = null;
+    swapFaceUpCard = null;
+
+    notifyListeners();
+  }
+
+  void finishSwapping(Player p) {
+    if (state.currentPhase != GamePhase.swap || p.id != state.currentPlayer.id) {
+      return;
+    }
+
+    swapHandCard = null;
+    swapFaceUpCard = null;
+    state.currentPhase = GamePhase.playing;
+    state.messageHistory.add('Game started! ${state.currentPlayer.name}\'s turn.');
+    notifyListeners();
+    _checkAITurn();
   }
 
   Future<void> playSelectedCards(Player p) async {
@@ -178,8 +239,9 @@ class GameController extends ChangeNotifier {
   void _checkWinCondition() {
     for (var p in state.players) {
       if (p.hasWon) {
+        winner = p.name;
         isGameOver = true;
-        state.messageHistory.add('${p.name} WON THE GAME!');
+        //state.messageHistory.add('${p.name} WON THE GAME!');
         notifyListeners();
         return;
       }
@@ -192,7 +254,7 @@ class GameController extends ChangeNotifier {
     final p = state.currentPlayer;
     if (!p.isAI) return;
 
-    await Future.delayed(const Duration(milliseconds: 800)); // Simulate thinking
+    await Future.delayed(const Duration(milliseconds: 1200)); // Simulate thinking
 
     // Find playable cards
     List<PlayingCard> validPlay = [];

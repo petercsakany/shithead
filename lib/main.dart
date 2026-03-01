@@ -17,7 +17,10 @@ class ShitheadGameApp extends StatelessWidget {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF121212),
         fontFamily: 'Roboto', // Cyberpunk style fallback
-        colorScheme: const ColorScheme.dark(primary: Color(0xFFf4c025), secondary: Color(0xFFf4c025)),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFf4c025),
+          secondary: Color(0xFFf4c025),
+        ),
       ),
       home: const GameScreen(),
     );
