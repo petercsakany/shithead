@@ -82,6 +82,59 @@ class _GameScreenContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF121212), // Deep cyberpunk charcoal
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xFFf4c025)),
+        actions: [
+          Consumer<GameController>(
+            builder: (context, controller, child) {
+              return IconButton(
+                icon: const Icon(Icons.history),
+                onPressed: () => _showHistoryDialog(context, controller.state.messageHistory),
+                tooltip: 'View History',
+              );
+            },
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        backgroundColor: const Color(0xFF1E1E1E),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Color(0xFF121212),
+                border: Border(bottom: BorderSide(color: Color(0xFFf4c025), width: 2)),
+              ),
+              child: Center(
+                child: Text(
+                  'SHITHEAD',
+                  style: TextStyle(
+                    color: Color(0xFFf4c025),
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                  ),
+                ),
+              ),
+            ),
+            Consumer<GameController>(
+              builder: (context, controller, child) {
+                return ListTile(
+                  leading: const Icon(Icons.refresh, color: Color(0xFFf4c025)),
+                  title: const Text('New Game', style: TextStyle(color: Colors.white, fontSize: 18)),
+                  onTap: () {
+                    Navigator.pop(context); // Close drawer
+                    controller.startNewGame();
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: Consumer<GameController>(
           builder: (context, controller, child) {
@@ -94,111 +147,143 @@ class _GameScreenContent extends StatelessWidget {
             return LayoutBuilder(
               builder: (context, constraints) {
                 double scale = 1.0;
-                // Base scale primarily on width for portrait prioritize, with a generous max width bound
-                if (constraints.maxWidth < 600) {
-                  scale = constraints.maxWidth / 600;
-                }
-                if (scale < 0.6) scale = 0.6; // Don't shrink too much
-
-                // (iconScale removed to fix unused variable warning)
+                double wScale = constraints.maxWidth / 430;
+                double hScale = constraints.maxHeight / 880;
+                scale = wScale < hScale ? wScale : hScale;
+                if (scale < 0.6) scale = 0.6;
 
                 Widget content = Column(
                   children: [
                     // 1. Message area (Top)
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (state.latestMessage != null)
-                            Flexible(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.black87,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: const Color(0xFFf4c025)),
-                                ),
-                                child: Text(
-                                  state.latestMessage!,
-                                  style: const TextStyle(color: Color(0xFFf4c025), fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            )
-                          else
-                            const Spacer(),
-                          IconButton(
-                            icon: const Icon(Icons.history, color: Color(0xFFf4c025)),
-                            onPressed: () => _showHistoryDialog(context, state.messageHistory),
-                            tooltip: 'View History',
+                    if (state.latestMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFf4c025)),
                           ),
-                        ],
+                          child: Text(
+                            state.latestMessage!,
+                            style: const TextStyle(color: Color(0xFFf4c025), fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ),
-                    ),
 
                     // 2. Top AI Player
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: _buildPlayerZoneDecorated(context, aiTop, controller, isVertical: true, scale: scale),
+                      padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: _buildPlayerZoneDecorated(context, aiTop, controller, isVertical: true, scale: scale),
+                      ),
                     ),
 
                     // 3. Middle AI Players (Left & Right side by side)
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          _buildPlayerZoneDecorated(context, aiLeft, controller, isVertical: true, scale: scale),
-                          _buildPlayerZoneDecorated(context, aiRight, controller, isVertical: true, scale: scale),
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: _buildPlayerZoneDecorated(
+                                context,
+                                aiLeft,
+                                controller,
+                                isVertical: true,
+                                scale: scale,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: _buildPlayerZoneDecorated(
+                                context,
+                                aiRight,
+                                controller,
+                                isVertical: true,
+                                scale: scale,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
 
                     // 4. Center Play Area (Deck and Discard Pile)
-                    Expanded(child: Center(child: _buildCenterArea(state, scale))),
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: _buildCenterArea(state, scale),
+                        ),
+                      ),
+                    ),
 
                     // 5. Bottom User and Actions
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Left Action Buttons (New Game / Pick Up)
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.refresh),
-                                color: const Color(0xFFf4c025),
-                                onPressed: () => controller.startNewGame(),
-                                tooltip: 'New Game',
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.download),
-                                color: const Color(0xFFf4c025),
-                                onPressed: () => controller.pickUpPile(user),
-                                tooltip: 'Pick Up Pile',
-                              ),
-                            ],
-                          ),
                           // User Zone
-                          Expanded(
-                            child: _buildPlayerZoneDecorated(context, user, controller, isVertical: true, scale: scale),
-                          ),
-                          // Right Action Buttons (Play Selected)
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
+                          _buildPlayerZoneDecorated(context, user, controller, isVertical: true, scale: scale),
+                          SizedBox(height: 16 * scale),
+                          // Action Buttons
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              IconButton(
-                                icon: const Icon(Icons.play_arrow),
-                                color: (state.selectedCards.isNotEmpty && state.currentPlayer.id == user.id)
-                                    ? Colors.green
-                                    : Colors.grey,
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF1E1E1E),
+                                  foregroundColor: const Color(0xFFf4c025),
+                                  side: const BorderSide(color: Color(0xFFf4c025)),
+                                  padding: EdgeInsets.symmetric(horizontal: 24 * scale, vertical: 12 * scale),
+                                ),
+                                onPressed: () => controller.pickUpPile(user),
+                                child: Text(
+                                  'PICK UP',
+                                  style: TextStyle(
+                                    fontSize: 16 * scale,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 24 * scale),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: (state.selectedCards.isNotEmpty && state.currentPlayer.id == user.id)
+                                      ? Colors.green
+                                      : const Color(0xFF1E1E1E),
+                                  foregroundColor: (state.selectedCards.isNotEmpty && state.currentPlayer.id == user.id)
+                                      ? Colors.white
+                                      : Colors.grey,
+                                  side: BorderSide(
+                                    color: (state.selectedCards.isNotEmpty && state.currentPlayer.id == user.id)
+                                        ? Colors.green
+                                        : Colors.grey,
+                                  ),
+                                  padding: EdgeInsets.symmetric(horizontal: 40 * scale, vertical: 12 * scale),
+                                ),
                                 onPressed: (state.selectedCards.isNotEmpty && state.currentPlayer.id == user.id)
                                     ? () => controller.playSelectedCards(user)
                                     : null,
-                                tooltip: 'Play Selected',
+                                child: Text(
+                                  'PLAY',
+                                  style: TextStyle(
+                                    fontSize: 16 * scale,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
                               ),
                             ],
                           ),

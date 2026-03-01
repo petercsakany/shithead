@@ -110,9 +110,7 @@ class PlayerZone extends StatelessWidget {
                 );
               }).toList(),
             ),
-          )
-        else
-          SizedBox(height: 45 * scale), // Maintain some spacing where hand would be
+          ),
       ],
     );
   }

@@ -81,14 +81,18 @@ class CardWidget extends StatelessWidget {
                     left: 4,
                     child: Text(
                       card!.toString().split(' ').first,
-                      style: TextStyle(color: _getSuitColor(card!.suit), fontSize: 14, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: _getSuitColor(card!.suit),
+                        fontSize: width * 0.3,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   // Center Icon
                   Center(
                     child: Text(
                       _getSuitSymbol(card!.suit),
-                      style: TextStyle(color: _getSuitColor(card!.suit), fontSize: 24),
+                      style: TextStyle(color: _getSuitColor(card!.suit), fontSize: height * 0.4),
                     ),
                   ),
                   // Bottom right text
@@ -99,7 +103,11 @@ class CardWidget extends StatelessWidget {
                       angle: 3.14159,
                       child: Text(
                         card!.toString().split(' ').first,
-                        style: TextStyle(color: _getSuitColor(card!.suit), fontSize: 14, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: _getSuitColor(card!.suit),
+                          fontSize: width * 0.3,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
